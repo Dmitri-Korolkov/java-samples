@@ -4,7 +4,7 @@
 
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>dev.local.java.util</groupId>
+  <groupId>dev.local.java.samples</groupId>
   <artifactId>root</artifactId>
   <packaging>pom</packaging>
   <version>1.0.0</version>
@@ -20,6 +20,7 @@
 
   <modules>
     <module>file-watcher</module>
+    <module>websocket-client</module>
   </modules>
 
 </project>

@@ -1,4 +1,4 @@
-package dev.local.java.util.file.watcher;
+package dev.local.java.samples.file.watcher;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
