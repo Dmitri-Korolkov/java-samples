@@ -3,6 +3,7 @@
 .idea/
 *.ipr
 *.iws
+*.log
 */out/
 out/
 */target/
