@@ -1,12 +1,12 @@
 package dev.local.java.util.websocket.client;
 
+import org.glassfish.tyrus.client.ClientManager;
+import org.glassfish.tyrus.container.grizzly.GrizzlyClientSocket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.websocket.ContainerProvider;
 import javax.websocket.MessageHandler;
 import javax.websocket.Session;
-import javax.websocket.WebSocketContainer;
 import java.io.InputStream;
 import java.net.URI;
 import java.util.Properties;
@@ -32,15 +32,20 @@ public class AppMain {
     }
 
     try {
-      WebSocketContainer container = ContainerProvider.getWebSocketContainer();
 
-      MyClient myClient = new MyClient();
-      Session session = container.connectToServer(myClient, URI.create(properties.getProperty("ws.host")));
+//      WebSocketContainer container = ContainerProvider.getWebSocketContainer();
+//      Session session = container.connectToServer(MyClient.class, URI.create(properties.getProperty("ws.host")));
 
+      ClientManager client = ClientManager.createClient();
+
+      if (properties.getProperty("proxy.host") != null)
+        client.getProperties().put(GrizzlyClientSocket.PROXY_URI, properties.getProperty("proxy.host"));
+
+      Session session = client.connectToServer(MyClient.class, URI.create(properties.getProperty("ws.host")));
       session.addMessageHandler(new MessageHandler.Whole<String>() {
         @Override
         public void onMessage(String message) {
-          log.info("message: {}", message);
+          log.info("message: {}: {}", message, System.currentTimeMillis());
         }
       });
 

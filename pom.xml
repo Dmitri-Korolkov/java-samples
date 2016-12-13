@@ -21,6 +21,7 @@
   <modules>
     <module>file-watcher</module>
     <module>websocket-client</module>
+    <module>websocket-server</module>
   </modules>
 
 </project>
