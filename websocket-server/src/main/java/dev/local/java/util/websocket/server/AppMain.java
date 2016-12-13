@@ -8,7 +8,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
 import java.net.InetSocketAddress;
-import java.util.*;
+import java.util.HashSet;
+import java.util.Properties;
+import java.util.Set;
 
 public class AppMain extends WebSocketServer {
 
@@ -42,9 +44,14 @@ public class AppMain extends WebSocketServer {
   }
 
   @Override
-  public void onOpen(WebSocket conn, ClientHandshake handshake) {
-    connections.add(conn);
-    log.info("New connection from: {}", conn.getRemoteSocketAddress().getAddress().getHostAddress());
+  public void onOpen(WebSocket webSocket, ClientHandshake clientHandshake) {
+
+    webSocket.send("ky-ky");
+
+    while (clientHandshake.iterateHttpFields().hasNext()) {
+      String key = clientHandshake.iterateHttpFields().next();
+      log.info("key: {}, value: {}", key, clientHandshake.getFieldValue(key));
+    }
   }
 
   @Override
@@ -55,12 +62,12 @@ public class AppMain extends WebSocketServer {
 
   @Override
   public void onMessage(WebSocket conn, String message) {
-
+    log.info("message: {}", message);
   }
 
   @Override
   public void onError(WebSocket conn, Exception ex) {
-    log.error("ERROR from: {}", conn.getRemoteSocketAddress().getAddress().getHostAddress());
+    log.error("ERROR from: {}, exception: {}", conn.getRemoteSocketAddress().getAddress().getHostAddress(), ex);
   }
 
 }

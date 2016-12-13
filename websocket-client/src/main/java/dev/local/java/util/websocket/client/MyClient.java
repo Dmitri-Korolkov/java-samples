@@ -4,26 +4,41 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.websocket.*;
+import java.util.*;
 
 @ClientEndpoint
-public class MyClient {
+public class MyClient extends Endpoint {
 
   private static final Logger log = LoggerFactory.getLogger(MyClient.class);
 
-  @OnOpen
-  public void onOpen(Session session) {
-    log.info("Connected to endpoint: {}", session.getBasicRemote());
+  private ClientEndpointConfig cec;
+
+  private Map<String, List<String>> reqHeaders;
+
+  public MyClient() {
+    reqHeaders = new HashMap<>();
   }
 
-//  @OnMessage
-//  public void processMessage(String message) {
-//    log.info("Received message in client: {}", message);
-//  }
-
-  @OnError
-  public void processError(Throwable t) {
-    log.error("{}", t);
+  @Override
+  public void onOpen(Session session, EndpointConfig endpointConfig) {
+    log.info("Open session: {}", session.getBasicRemote());
   }
 
+  public ClientEndpointConfig getCec() {
+    return ClientEndpointConfig.Builder.create().configurator(
+            new ClientEndpointConfig.Configurator() {
+              @Override
+              public void beforeRequest(Map<String, List<String>> headers) {
+                headers.putAll(reqHeaders);
+              }
+            }).build();
+  }
 
+  public void addHeader(String key, String... values){
+    reqHeaders.put(key, Arrays.asList(values));
+  }
+
+  public Map<String, List<String>> getReqHeaders() {
+    return reqHeaders;
+  }
 }

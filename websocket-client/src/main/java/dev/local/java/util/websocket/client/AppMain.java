@@ -32,25 +32,25 @@ public class AppMain {
     }
 
     try {
-
-//      WebSocketContainer container = ContainerProvider.getWebSocketContainer();
-//      Session session = container.connectToServer(MyClient.class, URI.create(properties.getProperty("ws.host")));
-
-      ClientManager client = ClientManager.createClient();
-
+      ClientManager clientManager = ClientManager.createClient();
       if (properties.getProperty("proxy.host") != null)
-        client.getProperties().put(GrizzlyClientSocket.PROXY_URI, properties.getProperty("proxy.host"));
+        clientManager.getProperties().put(GrizzlyClientSocket.PROXY_URI, properties.getProperty("proxy.host"));
 
-      Session session = client.connectToServer(MyClient.class, URI.create(properties.getProperty("ws.host")));
+      MyClient myClient = new MyClient();
+      myClient.addHeader("test", "ok");
+
+      Session session = clientManager.connectToServer(
+              myClient, myClient.getCec(), URI.create(properties.getProperty("ws.host"))
+      );
+
       session.addMessageHandler(new MessageHandler.Whole<String>() {
         @Override
         public void onMessage(String message) {
-          log.info("message: {}: {}", message, System.currentTimeMillis());
+          log.info("message: {}", message);
         }
       });
 
       messageLatch.await(100, TimeUnit.SECONDS);
-
     } catch (Exception e) {
       log.error("ws error: {}", e);
     }
