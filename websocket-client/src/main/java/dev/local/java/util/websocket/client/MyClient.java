@@ -24,6 +24,16 @@ public class MyClient extends Endpoint {
     log.info("Open session: {}", session.getBasicRemote());
   }
 
+  @Override
+  public void onClose(Session session, CloseReason closeReason) {
+    log.info("session close: {}", session);
+  }
+
+  @Override
+  public void onError(Session session, Throwable thr) {
+    log.error("ws error: {}", thr);
+  }
+
   public ClientEndpointConfig getCec() {
     return ClientEndpointConfig.Builder.create().configurator(
             new ClientEndpointConfig.Configurator() {

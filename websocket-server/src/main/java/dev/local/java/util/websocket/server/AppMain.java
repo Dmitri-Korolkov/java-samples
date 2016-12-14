@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Properties;
 import java.util.Set;
 
@@ -38,6 +39,7 @@ public class AppMain extends WebSocketServer {
     try {
       AppMain main = new AppMain(Integer.valueOf(properties.getProperty("ws.port")));
       main.start();
+      log.info("WS server started");
     } catch (Exception e) {
       log.error("ws error: {}", e);
     }
@@ -48,8 +50,9 @@ public class AppMain extends WebSocketServer {
 
     webSocket.send("ky-ky");
 
-    while (clientHandshake.iterateHttpFields().hasNext()) {
-      String key = clientHandshake.iterateHttpFields().next();
+    Iterator<String> iterator = clientHandshake.iterateHttpFields();
+    while (iterator.hasNext()) {
+      String key = iterator.next();
       log.info("key: {}, value: {}", key, clientHandshake.getFieldValue(key));
     }
   }
