@@ -8,7 +8,7 @@
   <artifactId>root</artifactId>
   <packaging>pom</packaging>
   <version>1.0.0</version>
-  <name>java utils</name>
+  <name>java samples</name>
 
   <properties>
     <slf4j.version>1.7.21</slf4j.version>
@@ -22,6 +22,8 @@
     <module>file-watcher</module>
     <module>websocket-client</module>
     <module>websocket-server</module>
+    <module>empty-maven-project</module>
+    <module>simple-script</module>
   </modules>
 
 </project>

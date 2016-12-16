@@ -6,6 +6,7 @@
 
   <artifactId>file-watcher</artifactId>
   <version>1.0.0</version>
+  <packaging>jar</packaging>
 
   <parent>
     <groupId>dev.local.java.samples</groupId>
