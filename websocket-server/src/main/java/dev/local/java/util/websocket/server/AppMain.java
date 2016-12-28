@@ -49,6 +49,7 @@ public class AppMain extends WebSocketServer {
   public void onOpen(WebSocket webSocket, ClientHandshake clientHandshake) {
 
     webSocket.send("ky-ky");
+    connections.add(webSocket);
 
     Iterator<String> iterator = clientHandshake.iterateHttpFields();
     while (iterator.hasNext()) {

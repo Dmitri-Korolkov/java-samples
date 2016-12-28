@@ -7,6 +7,7 @@
 */out/
 out/
 */target/
+logs/
 target/
 */.idea_modules/
 atlassian-ide-plugin.xml
