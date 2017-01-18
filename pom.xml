@@ -28,6 +28,7 @@
     <module>smtp-server-mock</module>
     <module>smtp-client</module>
     <module>jdbc-example</module>
+    <module>scheduler</module>
   </modules>
 
 </project>
