@@ -17,6 +17,14 @@
 
   <dependencies>
 
+    <!-- https://mvnrepository.com/artifact/postgresql/postgresql -->
+    <dependency>
+      <groupId>postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>9.3-1104.jdbc41</version>
+    </dependency>
+
+
     <!-- Logging-->
     <dependency>
       <groupId>org.slf4j</groupId>
