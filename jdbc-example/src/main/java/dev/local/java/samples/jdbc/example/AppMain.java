@@ -14,7 +14,8 @@ public class AppMain {
   private static final String LOGIN = "postgres";
   private static final String PASS = "123";
 
-  private AppMain(){}
+  private AppMain() {
+  }
 
   public static void main(String[] args) {
 
@@ -28,26 +29,26 @@ public class AppMain {
       connection.setAutoCommit(false);
 
       preparedStatement = connection.prepareStatement(INSERT_USER, Statement.RETURN_GENERATED_KEYS);
-      preparedStatement.setString(1,"test");
-      preparedStatement.setString(2,"admin");
+      preparedStatement.setString(1, "test");
+      preparedStatement.setString(2, "admin");
 
       int result = preparedStatement.executeUpdate();
       connection.commit();
 
-      System.out.println(result);
+      log.info("{}", result);
       resultSet = preparedStatement.getGeneratedKeys();
 
-      for (int i =1; i<= resultSet.getMetaData().getColumnCount();i++){
-        System.out.println(resultSet.getMetaData().getColumnName(i));
+      for (int i = 1; i <= resultSet.getMetaData().getColumnCount(); i++) {
+        log.info("{}", resultSet.getMetaData().getColumnName(i));
       }
 
       if (resultSet.next()) {
-        log.info("result: {} : {}",result, resultSet.getObject("id"));
+        log.info("result: {} : {}", result, resultSet.getObject("id"));
       }
 
     } catch (Exception e) {
       try {
-        if (connection != null){
+        if (connection != null) {
           connection.rollback();
         }
       } catch (Exception ex) {

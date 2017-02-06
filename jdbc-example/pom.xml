@@ -24,6 +24,12 @@
       <version>9.3-1104.jdbc41</version>
     </dependency>
 
+    <!-- jdbc pool-->
+    <dependency>
+      <groupId>commons-dbcp</groupId>
+      <artifactId>commons-dbcp</artifactId>
+      <version>1.4</version>
+    </dependency>
 
     <!-- Logging-->
     <dependency>
