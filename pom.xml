@@ -29,6 +29,7 @@
     <module>smtp-client</module>
     <module>jdbc-example</module>
     <module>scheduler</module>
+    <module>app-fabric</module>
   </modules>
 
 </project>
