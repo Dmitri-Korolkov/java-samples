@@ -1,11 +1,17 @@
 package dev.local.java.samples.app.fabric;
 
+import dev.local.java.samples.app.fabric.annotations.AppBean;
 import dev.local.java.samples.app.fabric.exceptions.AppFabricExceptions;
+import org.reflections.Reflections;
+import org.reflections.scanners.TypeAnnotationsScanner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 public class AppFabric {
 
@@ -17,6 +23,23 @@ public class AppFabric {
 
   private AppFabric() {
     beans = new HashMap<>();
+
+    Reflections reflections = new Reflections("", new TypeAnnotationsScanner());
+    Set<Class<?>> classes = reflections.getTypesAnnotatedWith(AppBean.class, true);
+
+    for (Class<?> aClass : classes) {
+      System.out.println(aClass.getName());
+
+      Method[] methods = aClass.getDeclaredMethods();
+      for (Method m : methods) {
+        System.out.println("m " + m);
+        Annotation[] annotations = m.getAnnotations();
+        System.out.println("size " + annotations.length);
+        for (Annotation a : annotations) {
+          System.out.println("a " + a.annotationType().getName());
+        }
+      }
+    }
   }
 
   private void init() {
