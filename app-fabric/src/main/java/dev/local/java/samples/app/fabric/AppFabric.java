@@ -1,6 +1,8 @@
 package dev.local.java.samples.app.fabric;
 
 import dev.local.java.samples.app.fabric.annotations.AppBean;
+import dev.local.java.samples.app.fabric.annotations.BeanDestroy;
+import dev.local.java.samples.app.fabric.annotations.BeanInit;
 import dev.local.java.samples.app.fabric.exceptions.AppFabricExceptions;
 import org.reflections.Reflections;
 import org.reflections.scanners.TypeAnnotationsScanner;
@@ -8,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
@@ -21,30 +24,57 @@ public class AppFabric {
 
   private Map<String, Object> beans;
 
-  private AppFabric() {
+  private AppFabric() throws AppFabricExceptions {
+
     beans = new HashMap<>();
 
-    Reflections reflections = new Reflections("", new TypeAnnotationsScanner());
-    Set<Class<?>> classes = reflections.getTypesAnnotatedWith(AppBean.class, true);
+    try {
+      String path = AppProperties.getProp("scan.package");
 
-    for (Class<?> aClass : classes) {
-      System.out.println(aClass.getName());
+      Reflections reflections = new Reflections(path, new TypeAnnotationsScanner());
+      Set<Class<?>> classes = reflections.getTypesAnnotatedWith(AppBean.class, true);
 
-      Method[] methods = aClass.getDeclaredMethods();
-      for (Method m : methods) {
-        System.out.println("m " + m);
-        Annotation[] annotations = m.getAnnotations();
-        System.out.println("size " + annotations.length);
-        for (Annotation a : annotations) {
-          System.out.println("a " + a.annotationType().getName());
-        }
+      for (Class<?> bean : classes) {
+        String beanName = bean.getSimpleName().substring(0, 1).toLowerCase() + bean.getSimpleName().substring(1);
+        java.lang.reflect.Constructor constructor = bean.getConstructor(new Class[]{});
+        beans.put(beanName, constructor.newInstance());
       }
+    } catch (Exception e) {
+      throw new AppFabricExceptions("AppFabric init error: " + e);
     }
   }
 
-  private void init() {
+  private void init() throws InvocationTargetException, IllegalAccessException {
+    for (Object bean : beans.values()) {
+      Method[] methods = bean.getClass().getDeclaredMethods();
+      for (Method method : methods) {
+        Annotation annotations = method.getAnnotation(BeanInit.class);
+        if (annotations != null) {
+          method.invoke(bean);
+          break;
+        }
+      }
+    }
 
   }
+
+  public void destory() throws AppFabricExceptions {
+    try {
+      for (Object bean : beans.values()) {
+        Method[] methods = bean.getClass().getDeclaredMethods();
+        for (Method method : methods) {
+          Annotation annotations = method.getAnnotation(BeanDestroy.class);
+          if (annotations != null) {
+            method.invoke(bean);
+            break;
+          }
+        }
+      }
+    } catch (Exception e) {
+      throw new AppFabricExceptions("AppFabric exception on destroy: " + e);
+    }
+  }
+
 
   /**
    * return bean
@@ -54,9 +84,15 @@ public class AppFabric {
    * @throws AppFabricExceptions
    */
   public static Object getBean(String name) throws AppFabricExceptions {
-    if (instance == null) {
-      instance = new AppFabric();
-      instance.init();
+
+    try {
+      if (instance == null) {
+        instance = new AppFabric();
+        instance.init();
+        log.info("AppFabric init");
+      }
+    } catch (Exception e) {
+      throw new AppFabricExceptions("AppFabric error: " + e);
     }
 
     if (instance.beans.containsKey(name)) {
