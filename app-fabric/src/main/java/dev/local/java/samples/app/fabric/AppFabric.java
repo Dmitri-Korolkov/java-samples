@@ -1,5 +1,6 @@
 package dev.local.java.samples.app.fabric;
 
+import dev.local.java.samples.app.fabric.annotations.AppBean;
 import dev.local.java.samples.app.fabric.annotations.BeanDestroy;
 import dev.local.java.samples.app.fabric.annotations.BeanInit;
 import dev.local.java.samples.app.fabric.exceptions.AppFabricExceptions;
@@ -9,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URI;
@@ -24,23 +26,25 @@ public class AppFabric {
 
   private Map<String, Object> beans;
 
-  private AppFabric() throws AppFabricExceptions {
+  private AppFabric() throws AppFabricExceptions, IllegalAccessException, InvocationTargetException, InstantiationException, NoSuchMethodException, URISyntaxException, IOException, ClassNotFoundException {
 
     beans = new HashMap<>();
+    String path = AppProperties.getProp("scan.package");
 
-    try {
-      String path = AppProperties.getProp("scan.package");
+    if (path == null) {
+      throw new AppFabricExceptions("can't find value for 'scan.package'");
+    }
 
-      Iterable<Class> classes = getClasses(path);
+    Iterable<Class> classes = getClasses(path);
 
-      for (Class<?> bean : classes) {
+    for (Class<?> bean : classes) {
+      if (bean.isAnnotationPresent(AppBean.class)) {
         String beanName = bean.getSimpleName().substring(0, 1).toLowerCase() + bean.getSimpleName().substring(1);
-        java.lang.reflect.Constructor constructor = bean.getConstructor(new Class[]{});
+        Constructor constructor = bean.getConstructor(new Class[]{});
         beans.put(beanName, constructor.newInstance());
       }
-    } catch (Exception e) {
-      throw new AppFabricExceptions("AppFabric init error: " + e);
     }
+    log.debug("init beans: {}", beans.keySet());
   }
 
   private void init() throws InvocationTargetException, IllegalAccessException {
@@ -74,7 +78,6 @@ public class AppFabric {
     }
   }
 
-
   /**
    * return bean
    *
@@ -93,13 +96,13 @@ public class AppFabric {
         log.info("AppFabric init on {} ms", started);
       }
     } catch (Exception e) {
-      throw new AppFabricExceptions("AppFabric error: " + e);
+      throw new AppFabricExceptions("AppFabric error", e);
     }
 
     if (instance.beans.containsKey(name)) {
       return instance.beans.get(name);
     }
-    throw new AppFabricExceptions("AppFabric not contain bean whith name " + name);
+    throw new AppFabricExceptions("AppFabric not contain bean with name: " + name);
   }
 
   /* Class util methods */
