@@ -47,32 +47,32 @@
         </configuration>
       </plugin>
 
-      <plugin>
-        <artifactId>maven-assembly-plugin</artifactId>
+      <!--<plugin>-->
+        <!--<artifactId>maven-assembly-plugin</artifactId>-->
 
-        <executions>
-          <execution>
-            <phase>install</phase>
-            <goals>
-              <goal>single</goal>
-            </goals>
-          </execution>
-        </executions>
+        <!--<executions>-->
+          <!--<execution>-->
+            <!--<phase>install</phase>-->
+            <!--<goals>-->
+              <!--<goal>single</goal>-->
+            <!--</goals>-->
+          <!--</execution>-->
+        <!--</executions>-->
 
-        <configuration>
-          <descriptorRefs>
-            <descriptorRef>jar-with-dependencies</descriptorRef>
-          </descriptorRefs>
-          <archive>
-            <manifest>
-              <mainClass></mainClass>
-            </manifest>
-          </archive>
-          <descriptors>
-            <!--<descriptor>src/main/assembly/resource.xml</descriptor>-->
-          </descriptors>
-        </configuration>
-      </plugin>
+        <!--<configuration>-->
+          <!--<descriptorRefs>-->
+            <!--<descriptorRef>jar-with-dependencies</descriptorRef>-->
+          <!--</descriptorRefs>-->
+          <!--<archive>-->
+            <!--<manifest>-->
+              <!--<mainClass></mainClass>-->
+            <!--</manifest>-->
+          <!--</archive>-->
+          <!--<descriptors>-->
+            <!--&lt;!&ndash;<descriptor>src/main/assembly/resource.xml</descriptor>&ndash;&gt;-->
+          <!--</descriptors>-->
+        <!--</configuration>-->
+      <!--</plugin>-->
 
       <!-- test -->
       <plugin>

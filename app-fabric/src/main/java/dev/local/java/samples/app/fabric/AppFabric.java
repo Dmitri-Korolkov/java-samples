@@ -13,8 +13,6 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.*;
 
@@ -22,29 +20,115 @@ public class AppFabric {
 
   private static final Logger log = LoggerFactory.getLogger(AppFabric.class);
 
-  private static AppFabric instance;
+  private static final String CLASS_FILE_SUFFIX = ".class";
 
+  private static AppFabric instance;
   private Map<String, Object> beans;
 
-  private AppFabric() throws AppFabricExceptions, IllegalAccessException, InvocationTargetException, InstantiationException, NoSuchMethodException, URISyntaxException, IOException, ClassNotFoundException {
+  private AppFabric() throws AppFabricExceptions {
 
-    beans = new HashMap<>();
-    String path = AppProperties.getProp("scan.package");
+    try {
+      beans = new HashMap<>();
+      String path = AppProperties.getProp("scan.package");
 
-    if (path == null) {
-      throw new AppFabricExceptions("can't find value for 'scan.package'");
+      if (path == null) {
+        throw new AppFabricExceptions("can't find value for 'scan.package'");
+      }
+
+      List<Class<?>> classes = find(path);
+
+      for (Class<?> bean : classes) {
+        if (bean.isAnnotationPresent(AppBean.class)) {
+          String beanName = bean.getSimpleName().substring(0, 1).toLowerCase() + bean.getSimpleName().substring(1);
+          Constructor constructor = bean.getConstructor(new Class[]{});
+          beans.put(beanName, constructor.newInstance());
+        }
+      }
+      log.debug("init beans: {}", beans.keySet());
+    } catch (Exception e) {
+      throw new AppFabricExceptions(e);
+    }
+  }
+
+  public static void destory() throws AppFabricExceptions {
+
+    if (instance.beans == null) {
+      return;
+    }
+    try {
+      for (Object bean : instance.beans.values()) {
+        instance.closeBean(bean);
+      }
+    } catch (Exception e) {
+      throw new AppFabricExceptions("AppFabric exception on destroy: " + e);
+    }
+  }
+
+  /**
+   * return bean
+   *
+   * @param name
+   * @return
+   * @throws AppFabricExceptions
+   */
+  public static Object getBean(String name) throws AppFabricExceptions {
+    try {
+      if (instance == null) {
+        long start = System.currentTimeMillis();
+        instance = new AppFabric();
+        instance.init();
+        long started = System.currentTimeMillis() - start;
+        log.info("AppFabric init on {} ms, initialized {} beans", started, instance.beans.size());
+      }
+    } catch (Exception e) {
+      throw new AppFabricExceptions("AppFabric error: ", e);
     }
 
-    Iterable<Class> classes = getClasses(path);
+    if (instance.beans.containsKey(name)) {
+      return instance.beans.get(name);
+    }
+    throw new AppFabricExceptions("AppFabric not contain bean with name: " + name);
+  }
 
-    for (Class<?> bean : classes) {
-      if (bean.isAnnotationPresent(AppBean.class)) {
-        String beanName = bean.getSimpleName().substring(0, 1).toLowerCase() + bean.getSimpleName().substring(1);
-        Constructor constructor = bean.getConstructor(new Class[]{});
-        beans.put(beanName, constructor.newInstance());
+  /* Class util methods */
+  public List<Class<?>> find(String scannedPackage) throws IOException {
+
+    String scannedPath = scannedPackage.replace('.', '/');
+    Enumeration<URL> urls = ClassLoader.getSystemClassLoader().getResources(scannedPath);
+    List<Class<?>> classes = new ArrayList();
+
+    while (urls.hasMoreElements()) {
+      File file = new File(urls.nextElement().getFile());
+      classes.addAll(find(file, scannedPath));
+    }
+    return classes;
+  }
+
+  private List<Class<?>> find(File file, String scannedPackage) {
+
+    List<Class<?>> classes = new ArrayList();
+
+    System.err.println("package: " + scannedPackage);
+
+    if (file.isDirectory()) {
+      for (File child : file.listFiles()) {
+        String path = scannedPackage + "/" + child.getName();
+        classes.addAll(find(child, path));
+      }
+    } else if (scannedPackage.endsWith(CLASS_FILE_SUFFIX)) {
+      int endIndex = scannedPackage.length() - CLASS_FILE_SUFFIX.length();
+      String className = scannedPackage.substring(0, endIndex).replace('/', '.');
+      try {
+        System.err.println("new class: " + className);
+        Class bean = ClassLoader.getSystemClassLoader().loadClass(className);
+        if (bean.isAnnotationPresent(AppBean.class)) {
+          classes.add(bean);
+        }
+      } catch (ClassNotFoundException e) {
+        log.debug("load class error: {}", e);
       }
     }
-    log.debug("init beans: {}", beans.keySet());
+    return classes;
   }
 
   private void init() throws InvocationTargetException, IllegalAccessException {
@@ -61,83 +145,14 @@ public class AppFabric {
 
   }
 
-  public void destory() throws AppFabricExceptions {
-    try {
-      for (Object bean : beans.values()) {
-        Method[] methods = bean.getClass().getDeclaredMethods();
-        for (Method method : methods) {
-          Annotation annotations = method.getAnnotation(BeanDestroy.class);
-          if (annotations != null) {
-            method.invoke(bean);
-            break;
-          }
-        }
-      }
-    } catch (Exception e) {
-      throw new AppFabricExceptions("AppFabric exception on destroy: " + e);
-    }
-  }
-
-  /**
-   * return bean
-   *
-   * @param name
-   * @return
-   * @throws AppFabricExceptions
-   */
-  public static Object getBean(String name) throws AppFabricExceptions {
-
-    try {
-      if (instance == null) {
-        long start = System.currentTimeMillis();
-        instance = new AppFabric();
-        instance.init();
-        long started = System.currentTimeMillis() - start;
-        log.info("AppFabric init on {} ms", started);
-      }
-    } catch (Exception e) {
-      throw new AppFabricExceptions("AppFabric error", e);
-    }
-
-    if (instance.beans.containsKey(name)) {
-      return instance.beans.get(name);
-    }
-    throw new AppFabricExceptions("AppFabric not contain bean with name: " + name);
-  }
-
-  /* Class util methods */
-  private Iterable<Class> getClasses(String packageName) throws ClassNotFoundException, IOException, URISyntaxException {
-    ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-    String path = packageName.replace('.', '/');
-    Enumeration<URL> resources = classLoader.getResources(path);
-    List<File> dirs = new ArrayList();
-    while (resources.hasMoreElements()) {
-      URL resource = resources.nextElement();
-      URI uri = new URI(resource.toString());
-      dirs.add(new File(uri.getPath()));
-    }
-    List<Class> classes = new ArrayList();
-    for (File directory : dirs) {
-      classes.addAll(findClasses(directory, packageName));
-    }
-    return classes;
-  }
-
-
-  private List<Class> findClasses(File directory, String packageName) throws ClassNotFoundException {
-    List<Class> classes = new ArrayList();
-    if (!directory.exists()) {
-      return classes;
-    }
-    File[] files = directory.listFiles();
-    for (File file : files) {
-      if (file.isDirectory()) {
-        classes.addAll(findClasses(file, packageName + "." + file.getName()));
-      } else if (file.getName().endsWith(".class")) {
-        classes.add(Class.forName(packageName + '.' + file.getName().substring(0, file.getName().length() - 6)));
+  private void closeBean(Object bean) throws InvocationTargetException, IllegalAccessException {
+    Method[] methods = bean.getClass().getDeclaredMethods();
+    for (Method method : methods) {
+      Annotation annotations = method.getAnnotation(BeanDestroy.class);
+      if (annotations != null) {
+        method.invoke(bean);
+        break;
       }
     }
-    return classes;
   }
-
 }
