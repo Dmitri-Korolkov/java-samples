@@ -17,7 +17,7 @@ public class CallProcedureFromPool {
 
   private static final String QUERY = "{? = call exampleProc(?,?,?,?)}";
 
-  BasicDataSource connectionPool;
+  private BasicDataSource connectionPool;
 
   private CallProcedureFromPool() {
   }

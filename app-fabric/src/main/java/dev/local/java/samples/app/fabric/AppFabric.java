@@ -8,13 +8,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.URISyntaxException;
 import java.net.URL;
-import java.util.*;
+import java.net.URLClassLoader;
+import java.net.URLDecoder;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 public class AppFabric {
 
@@ -25,30 +34,58 @@ public class AppFabric {
   private static AppFabric instance;
   private Map<String, Object> beans;
 
-  private AppFabric() throws AppFabricExceptions {
+  private AppFabric() throws AppFabricExceptions, NoSuchFieldException, IllegalAccessException,
+          URISyntaxException, IOException, InvocationTargetException, InstantiationException, NoSuchMethodException, ClassNotFoundException {
 
-    try {
-      beans = new HashMap<>();
-      String path = AppProperties.getProp("scan.package");
+    beans = new HashMap<>();
+    String scanPath = AppProperties.getProp("scan.package");
+    String pathDec;
+    File jarFile;
+    List<Class<?>> classes = new ArrayList<>();
 
-      if (path == null) {
-        throw new AppFabricExceptions("can't find value for 'scan.package'");
-      }
+    if (scanPath == null) {
+      throw new AppFabricExceptions("can't find value for 'scan.package'");
+    }
 
-      List<Class<?>> classes = find(path);
+    if (ClassLoader.getSystemClassLoader().getResource("") == null) {
+      pathDec = URLDecoder.decode(AppFabric.class.getProtectionDomain().getCodeSource().getLocation().getPath(), "UTF-8");
+      jarFile = new File(pathDec);
 
-      for (Class<?> bean : classes) {
-        if (bean.isAnnotationPresent(AppBean.class)) {
-          String beanName = bean.getSimpleName().substring(0, 1).toLowerCase() + bean.getSimpleName().substring(1);
-          Constructor constructor = bean.getConstructor(new Class[]{});
-          beans.put(beanName, constructor.newInstance());
+      URL[] urls = {new URL("jar:" + jarFile.toURI().toURL() + "!/")};
+
+      try (
+              FileInputStream fileInputStream = new FileInputStream(pathDec);
+              ZipInputStream zip = new ZipInputStream(fileInputStream);
+              URLClassLoader ucl = new URLClassLoader(urls)
+      ) {
+        String scanPathTmp = scanPath.replace('.', '/');
+        for (ZipEntry entry = zip.getNextEntry(); entry != null; entry = zip.getNextEntry()) {
+          if (!entry.isDirectory() && entry.getName().startsWith(scanPathTmp)
+                  && entry.getName().endsWith(CLASS_FILE_SUFFIX)) {
+            createBean(entry.getName(), classes, ucl);
+          }
         }
       }
-      log.debug("init beans: {}", beans.keySet());
-    } catch (Exception e) {
-      throw new AppFabricExceptions(e);
+    } else {
+      //find classes in folder
+      jarFile = new File(ClassLoader.getSystemClassLoader().getResource("").getPath());
+      File[] files = jarFile.listFiles();
+      for (File file : files) {
+        classes.addAll(find(file, file.getName(), scanPath));
+      }
     }
+
+    for (Class<?> bean : classes) {
+      if (bean.isAnnotationPresent(AppBean.class)) {
+        String beanName = bean.getSimpleName().substring(0, 1).toLowerCase() + bean.getSimpleName().substring(1);
+        Constructor constructor = bean.getConstructor(new Class[]{});
+        beans.put(beanName, constructor.newInstance());
+      }
+    }
+
+    log.debug("init beans: {}", beans.keySet());
   }
+
 
   public static void destory() throws AppFabricExceptions {
 
@@ -72,54 +109,45 @@ public class AppFabric {
    * @throws AppFabricExceptions
    */
   public static Object getBean(String name) throws AppFabricExceptions {
-    try {
-      if (instance == null) {
-        long start = System.currentTimeMillis();
-        instance = new AppFabric();
-        instance.init();
-        long started = System.currentTimeMillis() - start;
-        log.info("AppFabric init on {} ms, initialized {} beans", started, instance.beans.size());
-      }
-    } catch (Exception e) {
-      throw new AppFabricExceptions("AppFabric error: ", e);
+
+    if (instance == null) {
+      initFabric();
     }
 
     if (instance.beans.containsKey(name)) {
       return instance.beans.get(name);
     }
+
     throw new AppFabricExceptions("AppFabric not contain bean with name: " + name);
   }
 
-  /* Class util methods */
-  public List<Class<?>> find(String scannedPackage) throws IOException {
+  public static void initFabric() throws AppFabricExceptions {
 
-    String scannedPath = scannedPackage.replace('.', '/');
-    Enumeration<URL> urls = ClassLoader.getSystemClassLoader().getResources(scannedPath);
-    List<Class<?>> classes = new ArrayList();
-
-    while (urls.hasMoreElements()) {
-      File file = new File(urls.nextElement().getFile());
-      classes.addAll(find(file, scannedPath));
+    try {
+      long start = System.currentTimeMillis();
+      instance = new AppFabric();
+      instance.init();
+      long started = System.currentTimeMillis() - start;
+      log.info("AppFabric init on {} ms, initialized {} beans", started, instance.beans.size());
+    } catch (Exception e) {
+      throw new AppFabricExceptions("erro on init AppFabric: " + e);
     }
-    return classes;
   }
 
-  private List<Class<?>> find(File file, String scannedPackage) {
+  /* Class util methods */
+  private List<Class<?>> find(File file, String scannedPackage, String scanPath) {
 
     List<Class<?>> classes = new ArrayList();
-
-    System.err.println("package: " + scannedPackage);
 
     if (file.isDirectory()) {
       for (File child : file.listFiles()) {
-        String path = scannedPackage + "/" + child.getName();
-        classes.addAll(find(child, path));
+        String path = scannedPackage + "." + child.getName();
+        classes.addAll(find(child, path, scanPath));
       }
-    } else if (scannedPackage.endsWith(CLASS_FILE_SUFFIX)) {
+    } else if (scannedPackage.endsWith(CLASS_FILE_SUFFIX) && scannedPackage.startsWith(scanPath)) {
       int endIndex = scannedPackage.length() - CLASS_FILE_SUFFIX.length();
       String className = scannedPackage.substring(0, endIndex).replace('/', '.');
       try {
-        System.err.println("new class: " + className);
         Class bean = ClassLoader.getSystemClassLoader().loadClass(className);
         if (bean.isAnnotationPresent(AppBean.class)) {
           classes.add(bean);
@@ -153,6 +181,19 @@ public class AppFabric {
         method.invoke(bean);
         break;
       }
+    }
+  }
+
+  private void createBean(String path, List<Class<?>> classes, URLClassLoader ucl) {
+    try {
+      int endIndex = path.length() - CLASS_FILE_SUFFIX.length();
+      String className = path.substring(0, endIndex).replace('/', '.');
+      if (className.startsWith("dev.local")) {
+        Class<?> bean = Class.forName(className, true, ucl);
+        classes.add(bean);
+      }
+    } catch (Exception e) {
+      log.error("create bean error: {}", e);
     }
   }
 }
