@@ -128,6 +128,15 @@ public class AppFabric {
       instance = new AppFabric();
       instance.init();
       long started = System.currentTimeMillis() - start;
+
+      log.info("   ###    ########  ########  ########    ###    ########  ########  ####  ######  ");
+      log.info("  ## ##   ##     ## ##     ## ##         ## ##   ##     ## ##     ##  ##  ##    ## ");
+      log.info(" ##   ##  ##     ## ##     ## ##        ##   ##  ##     ## ##     ##  ##  ##       ");
+      log.info("##     ## ########  ########  ######   ##     ## ########  ########   ##  ##       ");
+      log.info("######### ##        ##        ##       ######### ##     ## ##   ##    ##  ##       ");
+      log.info("##     ## ##        ##        ##       ##     ## ##     ## ##    ##   ##  ##    ## ");
+      log.info("##     ## ##        ##        ##       ##     ## ########  ##     ## ####  ######  ");
+
       log.info("AppFabric init on {} ms, initialized {} beans", started, instance.beans.size());
     } catch (Exception e) {
       throw new AppFabricExceptions("erro on init AppFabric: " + e);
