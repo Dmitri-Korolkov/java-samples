@@ -35,7 +35,7 @@ public class AppFabric {
   private Map<String, Object> beans;
 
   private AppFabric() throws AppFabricExceptions, NoSuchFieldException, IllegalAccessException,
-          URISyntaxException, IOException, InvocationTargetException, InstantiationException, NoSuchMethodException, ClassNotFoundException {
+      URISyntaxException, IOException, InvocationTargetException, InstantiationException, NoSuchMethodException, ClassNotFoundException {
 
     beans = new HashMap<>();
     String scanPath = AppProperties.getProp("scan.package");
@@ -47,28 +47,37 @@ public class AppFabric {
       throw new AppFabricExceptions("can't find value for 'scan.package'");
     }
 
-    if (ClassLoader.getSystemClassLoader().getResource("") == null) {
+//    if (ClassLoader.getSystemClassLoader().getResource("") == null) {
+    if (AppFabric.class.getClassLoader().getResource("") == null) {
+
       pathDec = URLDecoder.decode(AppFabric.class.getProtectionDomain().getCodeSource().getLocation().getPath(), "UTF-8");
+
+      ClassLoader loader = AppFabric.class.getClassLoader();
+
+//      System.err.println("2: " + ClassLoader.getSystemClassLoader().getResource("").getPath());//null
       jarFile = new File(pathDec);
 
       URL[] urls = {new URL("jar:" + jarFile.toURI().toURL() + "!/")};
 
       try (
-              FileInputStream fileInputStream = new FileInputStream(pathDec);
-              ZipInputStream zip = new ZipInputStream(fileInputStream);
-              URLClassLoader ucl = new URLClassLoader(urls)
+          FileInputStream fileInputStream = new FileInputStream(pathDec);
+          ZipInputStream zip = new ZipInputStream(fileInputStream);
+          URLClassLoader ucl = new URLClassLoader(urls)
       ) {
         String scanPathTmp = scanPath.replace('.', '/');
         for (ZipEntry entry = zip.getNextEntry(); entry != null; entry = zip.getNextEntry()) {
           if (!entry.isDirectory() && entry.getName().startsWith(scanPathTmp)
-                  && entry.getName().endsWith(CLASS_FILE_SUFFIX)) {
+              && entry.getName().endsWith(CLASS_FILE_SUFFIX)) {
             createBean(entry.getName(), classes, ucl);
           }
         }
       }
     } else {
+      ClassLoader loader = AppFabric.class.getClassLoader();
+
       //find classes in folder
-      jarFile = new File(ClassLoader.getSystemClassLoader().getResource("").getPath());
+//      jarFile = new File(ClassLoader.getSystemClassLoader().getResource("").getPath());
+      jarFile = new File(AppFabric.class.getClassLoader().getResource("").getPath());
       File[] files = jarFile.listFiles();
       for (File file : files) {
         classes.addAll(find(file, file.getName(), scanPath));
@@ -102,6 +111,16 @@ public class AppFabric {
   }
 
   /**
+   * @param aClass
+   * @param <T>
+   * @return
+   * @throws AppFabricExceptions
+   */
+  public static <T> T getBean(Class aClass) throws AppFabricExceptions {
+    return (T) getBean(aClass.getSimpleName().substring(0, 1).toLowerCase() + aClass.getSimpleName().substring(1));
+  }
+
+  /**
    * return bean
    *
    * @param name
@@ -129,17 +148,19 @@ public class AppFabric {
       instance.init();
       long started = System.currentTimeMillis() - start;
 
-      log.info("   ###    ########  ########  ########    ###    ########  ########  ####  ######  ");
-      log.info("  ## ##   ##     ## ##     ## ##         ## ##   ##     ## ##     ##  ##  ##    ## ");
-      log.info(" ##   ##  ##     ## ##     ## ##        ##   ##  ##     ## ##     ##  ##  ##       ");
-      log.info("##     ## ########  ########  ######   ##     ## ########  ########   ##  ##       ");
-      log.info("######### ##        ##        ##       ######### ##     ## ##   ##    ##  ##       ");
-      log.info("##     ## ##        ##        ##       ##     ## ##     ## ##    ##   ##  ##    ## ");
-      log.info("##     ## ##        ##        ##       ##     ## ########  ##     ## ####  ######  ");
+      if (AppProperties.getProp("banner") != null && AppProperties.getProp("banner").equals("true")) {
+        log.info("   ###    ########  ########  ########    ###    ########  ########  ####  ######  ");
+        log.info("  ## ##   ##     ## ##     ## ##         ## ##   ##     ## ##     ##  ##  ##    ## ");
+        log.info(" ##   ##  ##     ## ##     ## ##        ##   ##  ##     ## ##     ##  ##  ##       ");
+        log.info("##     ## ########  ########  ######   ##     ## ########  ########   ##  ##       ");
+        log.info("######### ##        ##        ##       ######### ##     ## ##   ##    ##  ##       ");
+        log.info("##     ## ##        ##        ##       ##     ## ##     ## ##    ##   ##  ##    ## ");
+        log.info("##     ## ##        ##        ##       ##     ## ########  ##     ## ####  ######  ");
+      }
 
       log.info("AppFabric init on {} ms, initialized {} beans", started, instance.beans.size());
     } catch (Exception e) {
-      throw new AppFabricExceptions("erro on init AppFabric: " + e);
+      throw new AppFabricExceptions("error on init AppFabric: " + e);
     }
   }
 
@@ -157,11 +178,12 @@ public class AppFabric {
       int endIndex = scannedPackage.length() - CLASS_FILE_SUFFIX.length();
       String className = scannedPackage.substring(0, endIndex).replace('/', '.');
       try {
-        Class bean = ClassLoader.getSystemClassLoader().loadClass(className);
+//        Class bean = ClassLoader.getSystemClassLoader().loadClass(className);
+        Class bean = AppFabric.class.getClassLoader().loadClass(className);
         if (bean.isAnnotationPresent(AppBean.class)) {
           classes.add(bean);
         }
-      } catch (ClassNotFoundException e) {
+      } catch (Exception e) {
         log.debug("load class error: {}", e);
       }
     }
@@ -197,10 +219,8 @@ public class AppFabric {
     try {
       int endIndex = path.length() - CLASS_FILE_SUFFIX.length();
       String className = path.substring(0, endIndex).replace('/', '.');
-      if (className.startsWith("dev.local")) {
-        Class<?> bean = Class.forName(className, true, ucl);
-        classes.add(bean);
-      }
+      Class<?> bean = Class.forName(className, true, ucl);
+      classes.add(bean);
     } catch (Exception e) {
       log.error("create bean error: {}", e);
     }
